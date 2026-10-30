@@ -179,8 +179,14 @@ test("gate error offers tier distillation only once the trigger count is reached
   assert.equal(retry.result.blocksCreated, 0);
   assert.match(
     retry.result.errors[0]!,
-    /Tier distillation is actionable now: compress\(\{ content: \[\{ startId: "b1", endId: "b5", summary: "\.\.\.", topic: "\.\.\." \}\] \}\) merges those tier-1 blocks into one tier-2 block/,
+    /Tier distillation is actionable now: compress\(\{ content: "b1–b5 merged blocks\\n<one summary covering the whole span>" \}\) merges those tier-1 blocks into one tier-2 block/,
   );
+  // The hint must never demo the retired array-of-objects shape: strict hosts
+  // advertise content as ONE string (#4252) and reject the demo verbatim
+  // (#5205). Both halves are asserted — a fix that drops the hint entirely
+  // would otherwise pass.
+  assert.doesNotMatch(retry.result.errors[0]!, /content: \[/);
+  assert.match(retry.result.errors[0]!, /content: "b1–b5 merged blocks/);
 });
 
 test("protected-exclusion warning tells the model not to re-target excluded refs (billion-context-pi#470)", () => {

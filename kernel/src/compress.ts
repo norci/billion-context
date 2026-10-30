@@ -243,6 +243,17 @@ function coveringBlockIds(
   return [...found].sort((x, y) => numericBlockId(x) - numericBlockId(y));
 }
 
+// The hint must demo ONLY the advertised call shape: COMPRESS_PARAMETERS
+// declares content as one plain string (#4252), so an array-of-objects demo
+// here was copied verbatim by models and then rejected by strict hosts with
+// "/content: must be string" (#5205, same defect class as #5080).
+// The "\n" is printed as an ESCAPE (\\n in the template) so the demo stays ONE
+// line: the entry is a refs header line plus the mandatory summary body
+// (parse-compress-input.ts "line entry: missing summary after the refs header line").
+function foldCallShape(firstBlockId: string, lastBlockId: string): string {
+  return `compress({ content: "${firstBlockId}–${lastBlockId} merged blocks\\n<one summary covering the whole span>" })`;
+}
+
 // Block-ID-boundary advice is only actionable when tier distillation is ready;
 // emitting it otherwise sends the model to retry bN..bM ranges that cannot
 // fire yet (the misleading hint behind ranxianglei/billion-context-pi#470).
@@ -250,11 +261,11 @@ function tierActionHint(config: Config, state: CompressionState): string {
   if (!config.tiers.enabled) return "";
   const t2 = activeBlocks(state).filter((b) => b.tier === 2);
   if (t2.length >= config.tiers.tier3Trigger) {
-    return ` Tier condensation is actionable now: compress({ content: [{ startId: "${t2[0]!.blockId}", endId: "${t2[t2.length - 1]!.blockId}", summary: "...", topic: "..." }] }) merges those tier-2 blocks into one tier-3 block.`;
+    return ` Tier condensation is actionable now: ${foldCallShape(t2[0]!.blockId, t2[t2.length - 1]!.blockId)} merges those tier-2 blocks into one tier-3 block.`;
   }
   const t1 = activeBlocks(state).filter((b) => b.tier === 1);
   if (t1.length >= config.tiers.tier2Trigger) {
-    return ` Tier distillation is actionable now: compress({ content: [{ startId: "${t1[0]!.blockId}", endId: "${t1[t1.length - 1]!.blockId}", summary: "...", topic: "..." }] }) merges those tier-1 blocks into one tier-2 block.`;
+    return ` Tier distillation is actionable now: ${foldCallShape(t1[0]!.blockId, t1[t1.length - 1]!.blockId)} merges those tier-1 blocks into one tier-2 block.`;
   }
   return "";
 }
